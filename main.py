@@ -7,27 +7,11 @@ def main():
     bot = TeleBot(TOKEN)
 
     def opus_encode(file_bytes):
-        process = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 'opus', '-acodec', 'libopus', '-'],
+        process = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 'opus', '-'],
                                    stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE)
         opus_file_file_bytes, _ = process.communicate(input=file_bytes)
         return opus_file_file_bytes
-
-    # @bot.message_handler(commands=['test'])
-    # def handle_test(message):
-    #     test_file_name = "oIEmXEREIDAfAE4LQmBQiheYPBFNZBCDw9snIi.mp4"
-    #     # test_ogg_file_name = "Anti_blink_03.opus"
-    #
-    #     with open(f"tmp/{test_file_name}", "rb") as f:
-    #         test_file = f.read()
-    #
-    #     process = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 'opus', '-acodec', 'libopus', '-'],
-    #                                stdin=subprocess.PIPE,
-    #                                stdout=subprocess.PIPE)
-    #
-    #     test_ogg_file, _ = process.communicate(input=test_file)
-    #
-    #     bot.send_voice(message.chat.id, test_ogg_file)
 
     @bot.message_handler(commands=['start', 'help'])
     def handle_start_help(message):
