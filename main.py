@@ -3,15 +3,16 @@ from telebot_token import TOKEN
 import subprocess
 
 
+def opus_encode(file_bytes):
+    process = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 'opus', '-'],
+                               stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE)
+    opus_file_file_bytes, _ = process.communicate(input=file_bytes)
+    return opus_file_file_bytes
+
+
 def main():
     bot = TeleBot(TOKEN)
-
-    def opus_encode(file_bytes):
-        process = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 'opus', '-'],
-                                   stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE)
-        opus_file_file_bytes, _ = process.communicate(input=file_bytes)
-        return opus_file_file_bytes
 
     @bot.message_handler(commands=['start', 'help'])
     def handle_start_help(message):
