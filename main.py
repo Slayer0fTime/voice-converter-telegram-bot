@@ -1,14 +1,27 @@
 from telebot import TeleBot
 from telebot_token import TOKEN
 import subprocess
+import tempfile
+import os
 
 
 def opus_encode(file_bytes):
-    process = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 'opus', '-'],
-                               stdin=subprocess.PIPE,
-                               stdout=subprocess.PIPE)
-    opus_file_file_bytes, _ = process.communicate(input=file_bytes)
-    return opus_file_file_bytes
+    with tempfile.NamedTemporaryFile(delete=False) as fp:
+        fp.write(file_bytes)
+        input_file = fp.name
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.ogg') as fp:
+        output_file = fp.name
+
+    subprocess.run(["ffmpeg", "-i", input_file, "-vn", "-c:a", "libopus", output_file, '-y'])
+
+    with open(output_file, 'rb') as f:
+        opus_bytes = f.read()
+
+    os.unlink(input_file)
+    os.unlink(output_file)
+
+    return opus_bytes
 
 
 def main():
