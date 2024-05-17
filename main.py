@@ -31,7 +31,7 @@ def main():
     def handle_start_help(message):
         start_message = f"Hi, {message.from_user.first_name}\n" \
                         "I can convert audio or video into a voice message\n" \
-                        "You can send me one or more audio or video files at once.\n" \
+                        "You can send me one or more audio or video files at once\n" \
                         "With sonic sorcery, @slayer_of_time"
         bot.send_message(message.chat.id, start_message)
 
