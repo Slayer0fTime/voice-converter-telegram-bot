@@ -29,22 +29,25 @@ def main():
 
     @bot.message_handler(commands=['start', 'help'])
     def handle_start_help(message):
-        start_message = f"Hi, {message.from_user.first_name}.\n" \
-                        f"I can convert audio or video into a voice message.\n" \
-                        f"Send audio or video.\n" \
+        start_message = f"Hi, {message.from_user.first_name}\n" \
+                        f"I can convert audio or video into a voice message\n" \
+                        f"Send audio or video\n" \
                         f"Glory to @slayer_of_time"
         bot.send_message(message.chat.id, start_message)
 
     @bot.message_handler(content_types=['audio', 'video'])
     def handle_audio_video_file(message):
-        if message.audio:
-            file_id = message.audio.file_id
-        elif message.video:
-            file_id = message.video.file_id
+        file = message.audio or message.video
+        file_id = file.file_id
+        file_size = file.file_size
+
+        if file_size > 20 * 1024 * 1024:
+            bot.send_message(message.chat.id, "File is too large\n"
+                                              "The file size should be less than 20 MB")
+            return
 
         file_info = bot.get_file(file_id)
         file_bytes = bot.download_file(file_info.file_path)
-
         ogg_file_bytes = opus_encode(file_bytes)
         bot.send_voice(message.chat.id, ogg_file_bytes, reply_to_message_id=message.message_id)
 
