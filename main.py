@@ -42,8 +42,9 @@ def main():
         file_size = file.file_size
 
         if file_size > 20 * 1024 * 1024:
-            bot.send_message(message.chat.id, "File is too large\n"
-                                              "The file size should be less than 20 MB")
+            file_size_error_message = "File is too large\n" \
+                                      "The file size should be less than 20 MB"
+            bot.send_message(message.chat.id, file_size_error_message, reply_to_message_id=message.message_id)
             return
 
         file_info = bot.get_file(file_id)
