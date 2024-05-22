@@ -7,7 +7,7 @@ import os
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 
 
-def opus_encode(file_bytes, bass_boost=False):
+def opus_encode(file_bytes, volume_boost=False, bass_boost=False):
     with tempfile.NamedTemporaryFile(delete=False) as fp:
         fp.write(file_bytes)
         input_file = fp.name
@@ -15,9 +15,10 @@ def opus_encode(file_bytes, bass_boost=False):
     with tempfile.NamedTemporaryFile(delete=False, suffix='.ogg') as fp:
         output_file = fp.name
 
+    volume = 2 if volume_boost else 1
     gain = 10 if bass_boost else 1
     subprocess.run(
-        ["ffmpeg", "-i", input_file, "-vn", "-filter:a", f"bass=gain={gain}",
+        ["ffmpeg", "-i", input_file, "-vn", "-filter:a", f"volume={volume}, bass=gain={gain}",
          "-codec:a", "libopus", output_file, '-y'])
 
     with open(output_file, 'rb') as f:
@@ -55,7 +56,8 @@ def main(bot_token):
         file_bytes = bot.download_file(file_info.file_path)
         ogg_file_bytes = opus_encode(file_bytes)
 
-        markup = util.quick_markup({'Bass boost': {'callback_data': 'bass_boost'},
+        markup = util.quick_markup({'Volume boost': {'callback_data': 'volume_boost'},
+                                    'Bass boost': {'callback_data': 'bass_boost'},
                                     'Add caption': {'callback_data': 'add_caption'}})
 
         bot.send_voice(message.chat.id, ogg_file_bytes, reply_to_message_id=message.message_id, reply_markup=markup)
@@ -72,7 +74,15 @@ def main(bot_token):
         file_id = call.message.voice.file_id
         file_info = bot.get_file(file_id)
         file_bytes = bot.download_file(file_info.file_path)
-        bass_boost_file_bytes = opus_encode(file_bytes, True)
+        bass_boost_file_bytes = opus_encode(file_bytes, bass_boost=True)
+        bot.send_voice(call.message.chat.id, bass_boost_file_bytes, reply_to_message_id=call.message.message_id)
+
+    @bot.callback_query_handler(lambda call: call.data == "volume_boost")
+    def handle_bass_boost_callback(call):
+        file_id = call.message.voice.file_id
+        file_info = bot.get_file(file_id)
+        file_bytes = bot.download_file(file_info.file_path)
+        bass_boost_file_bytes = opus_encode(file_bytes, volume_boost=True)
         bot.send_voice(call.message.chat.id, bass_boost_file_bytes, reply_to_message_id=call.message.message_id)
 
     def process_caption_response(message, original_voice_message, request_message_id):
