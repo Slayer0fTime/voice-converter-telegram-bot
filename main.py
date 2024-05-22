@@ -5,7 +5,6 @@ import tempfile
 import os
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
-user_data = dict()
 
 
 def opus_encode(file_bytes):
@@ -29,8 +28,8 @@ def opus_encode(file_bytes):
     return opus_bytes
 
 
-def main():
-    bot = TeleBot(TOKEN)
+def main(bot_token):
+    bot = TeleBot(bot_token)
 
     @bot.message_handler(commands=['start', 'help'])
     def handle_start_help(message):
@@ -55,9 +54,6 @@ def main():
         file_bytes = bot.download_file(file_info.file_path)
         ogg_file_bytes = opus_encode(file_bytes)
 
-        user_data[message.chat.id] = ogg_file_bytes
-        print("number of users:", len(user_data))
-
         markup = util.quick_markup({'Bass boost': {'callback_data': 'bass_boost'},
                                     'Add caption': {'callback_data': 'add_caption'}})
 
@@ -68,16 +64,17 @@ def main():
         if call.data == "add_caption":
             request_message = bot.send_message(call.message.chat.id, "Send the caption text",
                                                reply_to_message_id=call.message.message_id)
-            bot.register_next_step_handler(call.message, process_add_caption, request_message.message_id,
-                                           call.message.message_id)
+            bot.register_next_step_handler(call.message, process_add_caption, call.message, request_message.message_id)
         elif call.data == "bass_boost":
             bot.send_message(call.message.chat.id, "Bass boosting is in development",
                              reply_to_message_id=call.message.message_id)
 
-    def process_add_caption(message, request_message_id, voice_message_id):
-        ogg_file_bytes = user_data.get(message.chat.id)
+    def process_add_caption(message, original_voice_message, request_message_id):
+        voice_file_info = bot.get_file(original_voice_message.voice.file_id)
+        voice_file_bytes = bot.download_file(voice_file_info.file_path)
 
-        bot.send_voice(message.chat.id, ogg_file_bytes, caption=message.text, reply_to_message_id=voice_message_id)
+        bot.send_voice(message.chat.id, voice_file_bytes, caption=message.text,
+                       reply_to_message_id=original_voice_message.message_id)
         bot.delete_message(message.chat.id, request_message_id)
         bot.delete_message(message.chat.id, message.message_id)
 
@@ -85,4 +82,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(TOKEN)
