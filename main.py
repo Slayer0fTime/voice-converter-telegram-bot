@@ -6,10 +6,6 @@ import os
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 
-voice_options_markup = util.quick_markup({'Volume boost': {'callback_data': 'volume_boost'},
-                                          'Bass boost': {'callback_data': 'bass_boost'},
-                                          'Add caption': {'callback_data': 'add_caption'}})
-
 
 def opus_encode(file_bytes, volume_boost=False, bass_boost=False):
     with tempfile.NamedTemporaryFile(delete=False) as fp:
@@ -19,8 +15,8 @@ def opus_encode(file_bytes, volume_boost=False, bass_boost=False):
     with tempfile.NamedTemporaryFile(delete=False, suffix='.ogg') as fp:
         output_file = fp.name
 
-    volume = 2 if volume_boost else 1
-    gain = 10 if bass_boost else 1
+    volume = 1.5 if volume_boost else 1
+    gain = 5 if bass_boost else 1
     subprocess.run(
         ["ffmpeg", "-i", input_file, "-vn", "-filter:a", f"volume={volume}, bass=gain={gain}",
          "-codec:a", "libopus", output_file, '-y'])
@@ -36,6 +32,23 @@ def opus_encode(file_bytes, volume_boost=False, bass_boost=False):
 
 def main(bot_token):
     bot = TeleBot(bot_token)
+    voice_options_markup = util.quick_markup({'Volume boost': {'callback_data': 'volume_boost'},
+                                              'Bass boost': {'callback_data': 'bass_boost'},
+                                              'Add caption': {'callback_data': 'add_caption'}})
+
+    def download_and_process_file(message, file_id, volume_boost=False, bass_boost=True):
+        process_message = bot.reply_to(message, "Downloading...")
+        file_info = bot.get_file(file_id)
+        file_bytes = bot.download_file(file_info.file_path)
+
+        bot.edit_message_text("Processing...", message.chat.id, process_message.message_id)
+        ogg_file_bytes = opus_encode(file_bytes, volume_boost, bass_boost)
+
+        bot.edit_message_text("Sending...", message.chat.id, process_message.message_id)
+        bot.send_voice(message.chat.id, ogg_file_bytes, reply_to_message_id=message.message_id,
+                       reply_markup=voice_options_markup)
+
+        bot.delete_message(message.chat.id, process_message.message_id)
 
     @bot.message_handler(commands=['start', 'help'])
     def handle_start_help(message):
@@ -55,13 +68,7 @@ def main(bot_token):
             bot.send_message(message.chat.id, file_size_error_message, reply_to_message_id=message.message_id)
             return
 
-        file_id = file.file_id
-        file_info = bot.get_file(file_id)
-        file_bytes = bot.download_file(file_info.file_path)
-        ogg_file_bytes = opus_encode(file_bytes)
-
-        bot.send_voice(message.chat.id, ogg_file_bytes, reply_to_message_id=message.message_id,
-                       reply_markup=voice_options_markup)
+        download_and_process_file(message, file.file_id)
 
     @bot.callback_query_handler(func=lambda call: call.data == "add_caption")
     def handle_add_caption_callback(call):
@@ -71,29 +78,16 @@ def main(bot_token):
                                        request_message.message_id)
 
     @bot.callback_query_handler(lambda call: call.data == "volume_boost")
-    def handle_bass_boost_callback(call):
-        file_id = call.message.voice.file_id
-        file_info = bot.get_file(file_id)
-        file_bytes = bot.download_file(file_info.file_path)
-        bass_boost_file_bytes = opus_encode(file_bytes, volume_boost=True)
-        bot.send_voice(call.message.chat.id, bass_boost_file_bytes, reply_to_message_id=call.message.message_id,
-                       reply_markup=voice_options_markup)
+    def handle_volume_boost_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, volume_boost=True)
 
     @bot.callback_query_handler(lambda call: call.data == "bass_boost")
     def handle_bass_boost_callback(call):
-        file_id = call.message.voice.file_id
-        file_info = bot.get_file(file_id)
-        file_bytes = bot.download_file(file_info.file_path)
-        bass_boost_file_bytes = opus_encode(file_bytes, bass_boost=True)
-        bot.send_voice(call.message.chat.id, bass_boost_file_bytes, reply_to_message_id=call.message.message_id,
-                       reply_markup=voice_options_markup)
+        download_and_process_file(call.message, call.message.voice.file_id, bass_boost=True)
 
     def process_caption_response(message, original_voice_message, request_message_id):
-        voice_file_info = bot.get_file(original_voice_message.voice.file_id)
-        voice_file_bytes = bot.download_file(voice_file_info.file_path)
-
-        bot.send_voice(message.chat.id, voice_file_bytes, caption=message.text,
-                       reply_to_message_id=original_voice_message.message_id, reply_markup=voice_options_markup)
+        bot.edit_message_caption(message.text, message.chat.id, original_voice_message.message_id,
+                                 reply_markup=voice_options_markup)
         bot.delete_messages(message.chat.id, [request_message_id, message.message_id])
 
     bot.infinity_polling()
