@@ -30,13 +30,13 @@ def opus_encode(file_bytes, volume_boost=False, bass_boost=False):
     return opus_bytes
 
 
-def main(bot_token):
-    bot = TeleBot(bot_token)
+def main():
+    bot = TeleBot(TOKEN)
     voice_options_markup = util.quick_markup({'Volume boost': {'callback_data': 'volume_boost'},
                                               'Bass boost': {'callback_data': 'bass_boost'},
                                               'Add caption': {'callback_data': 'add_caption'}})
 
-    def download_and_process_file(message, file_id, volume_boost=False, bass_boost=True):
+    def download_and_process_file(message, file_id, volume_boost=False, bass_boost=False):
         process_message = bot.reply_to(message, "Downloading...")
         file_info = bot.get_file(file_id)
         file_bytes = bot.download_file(file_info.file_path)
@@ -94,4 +94,4 @@ def main(bot_token):
 
 
 if __name__ == '__main__':
-    main(TOKEN)
+    main()
