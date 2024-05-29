@@ -1,3 +1,4 @@
+import telebot.types
 from telebot import TeleBot, util
 from telebot_token import TOKEN
 import subprocess
@@ -7,7 +8,7 @@ import os
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 
 
-def opus_encode(file_bytes, volume_boost=False, bass_boost=False):
+def opus_encode(file_bytes, volume_boost=False, bass_boost=False, speed=1.0):
     with tempfile.NamedTemporaryFile(delete=False) as fp:
         fp.write(file_bytes)
         input_file = fp.name
@@ -18,7 +19,7 @@ def opus_encode(file_bytes, volume_boost=False, bass_boost=False):
     volume = 1.5 if volume_boost else 1
     gain = 5 if bass_boost else 1
     subprocess.run(
-        ["ffmpeg", "-i", input_file, "-vn", "-filter:a", f"volume={volume}, bass=gain={gain}",
+        ["ffmpeg", "-i", input_file, "-vn", "-filter:a", f"volume={volume}, bass=gain={gain}, atempo={speed}",
          "-codec:a", "libopus", output_file, '-y'])
 
     with open(output_file, 'rb') as f:
@@ -34,18 +35,21 @@ def main():
     bot = TeleBot(TOKEN)
     voice_options_markup = util.quick_markup({'Volume boost': {'callback_data': 'volume_boost'},
                                               'Bass boost': {'callback_data': 'bass_boost'},
+                                              'Speed up': {'callback_data': 'speed_up'},
+                                              'Slow down': {'callback_data': 'slow_down'},
                                               'Add caption': {'callback_data': 'add_caption'}})
 
-    def download_and_process_file(message, file_id, volume_boost=False, bass_boost=False):
+    def download_and_process_file(message: telebot.types.Message, file_id, volume_boost=False,
+                                  bass_boost=False, speed=1.0) -> None:
         process_message = bot.reply_to(message, "Downloading...")
         file_info = bot.get_file(file_id)
         file_bytes = bot.download_file(file_info.file_path)
 
         bot.edit_message_text("Processing...", message.chat.id, process_message.message_id)
-        ogg_file_bytes = opus_encode(file_bytes, volume_boost, bass_boost)
+        ogg_file_bytes = opus_encode(file_bytes, volume_boost, bass_boost, speed)
 
         bot.edit_message_text("Sending...", message.chat.id, process_message.message_id)
-        bot.send_voice(message.chat.id, ogg_file_bytes, reply_to_message_id=message.message_id,
+        bot.send_voice(message.chat.id, ogg_file_bytes, message.caption, reply_to_message_id=message.message_id,
                        reply_markup=voice_options_markup)
 
         bot.delete_message(message.chat.id, process_message.message_id)
@@ -82,8 +86,16 @@ def main():
         download_and_process_file(call.message, call.message.voice.file_id, volume_boost=True)
 
     @bot.callback_query_handler(lambda call: call.data == "bass_boost")
-    def handle_bass_boost_callback(call):
+    def handle_volume_boost_callback(call):
         download_and_process_file(call.message, call.message.voice.file_id, bass_boost=True)
+
+    @bot.callback_query_handler(lambda call: call.data == "speed_up")
+    def handle_bass_boost_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, speed=1.5)
+
+    @bot.callback_query_handler(lambda call: call.data == "slow_down")
+    def handle_bass_boost_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, speed=0.5)
 
     def process_caption_response(message, original_voice_message, request_message_id):
         bot.edit_message_caption(message.text, message.chat.id, original_voice_message.message_id,
