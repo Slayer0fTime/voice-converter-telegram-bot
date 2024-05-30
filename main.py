@@ -75,36 +75,36 @@ def main():
 
         download_and_process_file(message, file.file_id)
 
+    @bot.callback_query_handler(lambda call: call.data == "volume_boost")
+    def handle_volume_boost_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='volume=1.5')
+
+    @bot.callback_query_handler(lambda call: call.data == "bass_boost")
+    def handle_bass_boost_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='bass=gain=5')
+
+    @bot.callback_query_handler(lambda call: call.data == "speed_up")
+    def handle_speed_up_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='atempo=1.25')
+
+    @bot.callback_query_handler(lambda call: call.data == "slow_down")
+    def handle_slow_down_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='atempo=0.75')
+
+    @bot.callback_query_handler(lambda call: call.data == "increase_pitch")
+    def handle_increase_pitch_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='rubberband=pitch=1.25')
+
+    @bot.callback_query_handler(lambda call: call.data == "decrease_pitch")
+    def handle_decrease_pitch_callback(call):
+        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='rubberband=pitch=0.75')
+
     @bot.callback_query_handler(func=lambda call: call.data == "add_caption")
     def handle_add_caption_callback(call):
         request_message = bot.send_message(call.message.chat.id, "Send the caption text",
                                            reply_to_message_id=call.message.message_id)
         bot.register_next_step_handler(call.message, process_caption_response, call.message,
                                        request_message.message_id)
-
-    @bot.callback_query_handler(lambda call: call.data == "volume_boost")
-    def handle_volume_boost_callback(call):
-        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='volume=1.5')
-
-    @bot.callback_query_handler(lambda call: call.data == "bass_boost")
-    def handle_volume_boost_callback(call):
-        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='bass=gain=5')
-
-    @bot.callback_query_handler(lambda call: call.data == "speed_up")
-    def handle_bass_boost_callback(call):
-        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='atempo=1.25')
-
-    @bot.callback_query_handler(lambda call: call.data == "slow_down")
-    def handle_bass_boost_callback(call):
-        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='atempo=0.75')
-
-    @bot.callback_query_handler(lambda call: call.data == "increase_pitch")
-    def handle_bass_boost_callback(call):
-        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='rubberband=pitch=1.25')
-
-    @bot.callback_query_handler(lambda call: call.data == "decrease_pitch")
-    def handle_bass_boost_callback(call):
-        download_and_process_file(call.message, call.message.voice.file_id, voice_filter='rubberband=pitch=0.75')
 
     def process_caption_response(message, original_voice_message, request_message_id):
         bot.edit_message_caption(message.text, message.chat.id, original_voice_message.message_id,
